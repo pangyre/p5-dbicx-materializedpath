@@ -1,0 +1,82 @@
+NAME
+    DBICx::MaterializedPath - (Pre-alpha!) DBIx::Class plugin for
+    automatically tracking lineage paths in simple data trees.
+
+VERSION
+    0.01_01
+
+SYNOPSIS
+DESCRIPTION
+  METHODS
+    ancestors
+    get_root
+    grandchildren
+    node_depth
+    root_node
+    set_materialized_path
+    siblings
+
+  OVERRIDDEN METHODS
+    insert
+    update
+
+CAVEATS
+    If your materialized path column is insufficiently large you're going to
+    have problems. A "VARCHAR(255)" is only wide enough to support a tree
+    which is 35 nodes deep if the average PK is integers in the millions.
+    This might be fine for your usage. Just be aware path tracking is not
+    arbitrary, it's limited to the column's width.
+
+TO DO
+    Better documents; obviously.
+    More tests; what else is new?
+
+CODE REPOSITORY
+    <http://github.com/pangyre/p5-dbicx-materializedpath>.
+
+SEE ALSO
+    *Trees in SQL: Nested Sets and Materialized Path*, Vadim Tropashko,
+    <http://www.dbazine.com/oracle/or-articles/tropashko4>.
+
+    DBIx::Class::Ordered, DBIx::Class.
+
+  WHY NOT DBIx::Class::Ordered?
+    There are data sets which have implicit, or even tacit,
+    orderingE<mdash>E<rdquo>positionE<ldquo> in DBIx::Class::Ordered
+    parlanceE<ndash> in the data already. Published articles, for example,
+    will be naturally ordered chronologically. Additional position tracking
+    becomes complex and redundant in this kind of case. You can even run
+    into cases where both types of ordering are necessary like a collection
+    of dictionaries. Each dictionary's terms are ordered alphabetically
+    while each term's definitions would be ordered by a position set at
+    editorial discretion.
+
+AUTHOR
+    Ashley Pond V · ashley.pond.v@gmail.com · <http://pangyresoft.com>.
+
+LICENSE
+    The parts of this library which is Yesh specific is free software. You
+    can redistribute and modify it under the same terms as Perl itself.
+
+DISCLAIMER OF WARRANTY
+    Because this software is licensed free of charge, there is no warranty
+    for the software, to the extent permitted by applicable law. Except when
+    otherwise stated in writing the copyright holders and other parties
+    provide the software "as is" without warranty of any kind, either
+    expressed or implied, including, but not limited to, the implied
+    warranties of merchantability and fitness for a particular purpose. The
+    entire risk as to the quality and performance of the software is with
+    you. Should the software prove defective, you assume the cost of all
+    necessary servicing, repair, or correction.
+
+    In no event unless required by applicable law or agreed to in writing
+    will any copyright holder, or any other party who may modify or
+    redistribute the software as permitted by the above license, be liable
+    to you for damages, including any general, special, incidental, or
+    consequential damages arising out of the use or inability to use the
+    software (including but not limited to loss of data or data being
+    rendered inaccurate or losses sustained by you or third parties or a
+    failure of the software to operate with any other software), even if
+    such holder or other party has been advised of the possibility of such
+    damages.
+
