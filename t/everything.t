@@ -83,6 +83,23 @@ ok( my @descendants = $node->grandchildren,
 is( scalar( @descendants ), 12,
     "Correct number of granchildren found" );
 
-diag( "MOOOO " . $last->path );
+ok( my $new_node = $schema->resultset("TreeData")
+        ->create({ content => "A new root",
+                   created => $NOW }),
+    "Creating a new rootless node" );
+
+
+isnt( $last->root_node->id, $new_node->id,
+      "New node isn't the root of the last added child" );
+
+$node->parent($new_node);
+$node->update;
+
+$last->discard_changes;
+
+is( $last->root_node->id, $new_node->id,
+    "New node is now the root of the last added child" );
 
 __END__
+
+Test removing the parent too?

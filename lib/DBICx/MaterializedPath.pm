@@ -4,7 +4,7 @@ use strict;
 use parent "DBIx::Class";
 use Carp;
 
-our $VERSION = "0.01_03";
+our $VERSION = "0.01";
 our $AUTHORITY = "cpan:ASHLEY";
 
 __PACKAGE__->mk_classdata( parent_column => "parent" );
@@ -100,16 +100,16 @@ sub update :method {
     my $self = shift;
     my %to_update = $self->get_dirty_columns;
     my $parent_column = $self->parent_column;
-    return $self->next::method(@_) unless $to_update{$parent_column};
-
-    # This should be configurable as a transaction I think. 321
-    my $path_column = $self->path_column;
-    for my $descendent ( $self->grandchildren )
-    {
-        $descendent->set_materialized_path;
-        $descendent->update;
-    }
     $self->next::method(@_);
+    return $self unless $to_update{$parent_column};
+    # This should be configurable as a transaction I think. 321
+    $self->set_materialized_path;
+    for my $descendant ( $self->grandchildren )
+    {
+        $descendant->set_materialized_path;
+        $descendant->update;
+    }
+    return $self;
 }
 
 # Previous and next support here.
@@ -132,11 +132,11 @@ __END__
 
 =head1 NAME
 
-DBICx::MaterializedPath - L<DBIx::Class> plugin for automatically tracking lineage paths in simple data trees (Beta software).
+DBICx::MaterializedPath - L<DBIx::Class> plugin for automatically tracking lineage paths in simple data trees (beta software).
 
 =head1 VERSION
 
-0.01_03
+0.01
 
 =head1 SYNOPSIS
 
@@ -177,7 +177,7 @@ Uses a column of a table with a tree structure to keep track of lineage. An exam
  my $rec = $result_source->find(999);
  say $rec->parent->id; # prints "10"
 
-It's trivial to find the parent and easy to recurse on the parent to find all ancestors. With a deep tree it becomes somewhat expensive. Take the example above, for example. If you want to get the entire lineage for the record with id "42" you have to do six queries against the database. If you matain a materialized path you only have to do one.
+It's trivial to find the parent and easy to recurse on the parent to find all ancestors. With a deep tree it becomes somewhat expensive. Take the example above, for example. If you want to get the entire lineage for the record with id "42" you have to do six queries against the database. If you maintain a materialized path you only have to do one.
 
 Consider our record "42" again. With its path 1/2/3/10/999/8/42 we can easily find all its parentsE<ndash>
 
