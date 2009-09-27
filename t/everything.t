@@ -35,6 +35,8 @@ for my $new ( 1 .. 3 )
         "Creating a new record"
       );
 
+    $kid->discard_changes; # Refresh from DB.
+
     is( $kid->node_depth, $new + 1,
         "Node depth " . ( $new + 1 ) . " is right" );
 
@@ -46,11 +48,15 @@ for my $new ( 1 .. 3 )
                     $kid->id, $kid->path )
           );
 
-
     my @sorted = sort { length($a->path) <=> length($b->path) } @ancestors;
 
     is_deeply( \@sorted, \@ancestors,
                "Ancestors are returned in appropriate order" );
+
+    my @flat_ancestors = map { +{ $_->get_columns } } @ancestors;
+    my @flat_computed = map { +{ $_->get_columns } } $kid->_compute_ancestors;
+    is_deeply( \@flat_ancestors, \@flat_computed,
+               "Ancestors == computed ancestors" );
 
     $last = $kid;
 }
@@ -58,9 +64,3 @@ for my $new ( 1 .. 3 )
 diag( "MOOOO " . $last->path );
 
 __END__
-
-
-    for my $ancestor ( $kid->ancestors )
-    {
-        
-    }

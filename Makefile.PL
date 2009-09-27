@@ -1,11 +1,11 @@
 use inc::Module::Install;
 
-name            "DBICx-MaterializedPath";
-all_from        "lib/DBICx/MaterializedPath.pm";
-author          "Ashley Pond V <ashley@cpan.org>";
+name "DBICx-MaterializedPath";
+all_from "lib/DBICx/MaterializedPath.pm";
+author "Ashley Pond V <ashley@cpan.org>";
 
-requires  "parent"      => "0.2";
-requires  "DBIx::Class" => "0.081";
+requires "parent" => "0.2";
+requires "DBIx::Class" => "0.081";
 
 build_requires "Test::More" => "0.42";
 build_requires "DBICx::TestDatabase";

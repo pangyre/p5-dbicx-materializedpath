@@ -3,11 +3,12 @@ use warnings;
 use strict;
 use parent "DBIx::Class";
 
-our $VERSION = "0.01_01";
+our $VERSION = "0.01_02";
+our $AUTHORITY = "cpan:ASHLEY";
 
 __PACKAGE__->mk_classdata( parent_column => "parent" );
 __PACKAGE__->mk_classdata( path_column => "materialized_path" );
-__PACKAGE__->mk_classdata( path_separator => "." );
+__PACKAGE__->mk_classdata( path_separator => "/" );
 __PACKAGE__->mk_classdata( max_depth => 500 );
 
 # Max depth setting? See notes on sanity check inline below.
@@ -52,7 +53,7 @@ sub root_node :method {
     $self->find($root_id);
 }
 
-# Note caveat, instructions about setting up children method.
+# Note caveat, instructions about children method.
 
 # How can order_by get into this mix?
 sub grandchildren {
@@ -130,27 +131,35 @@ __END__
 
 =head1 NAME
 
-DBICx::MaterializedPath - (Pre-alpha!) L<DBIx::Class> plugin for automatically tracking lineage paths in simple data trees.
+DBICx::MaterializedPath - L<DBIx::Class> plugin for automatically tracking lineage paths in simple data trees (Beta software).
 
 =head1 VERSION
 
-0.01_01
+0.01_02
 
 =head1 SYNOPSIS
 
-
 =head1 DESCRIPTION
 
+=head2 CAVEAT
 
-=head2 METHODS
+This package requires your table has a single primary key and a method to look up a parent record by its single primary key.
+
+=head1 METHODS
 
 =over 4
 
 =item ancestors
 
+Searches on the materialized path ids excepting the object's own. This is generally cheap because it uses the path instead of recursion.
+
 =item get_root
 
+Returns the root object for a given record.
+
 =item grandchildren
+
+Iterates through all children and grandchildren.
 
 =item node_depth
 
@@ -168,13 +177,37 @@ DBICx::MaterializedPath - (Pre-alpha!) L<DBIx::Class> plugin for automatically t
 
 =item insert
 
+Sets the materialized path.
+
 =item update
+
+Updates which change the parent of a record necessarily cascade through all their children and grandchildren to recompute and set their new materialized paths. E.g., given this treeE<ndash>
+
+                  1
+                  |
+                  3
+                 / \
+               12   8
+              /\    /\
+             5 13  7  4
+
+You get paths including B<1/3/12/13> and B<1/3/4>. Let's say we change record 3's parent from 1 to 2E<ndash>
+
+                  2
+                  |
+                  3
+                 / \
+               12   8
+              /\    /\
+             5 13  7  4
+
+The change is simple and it's obvious you have to update record 3 but you just broke the materialized path for records 4, 5, 7, 8, 12, and 13. In a big tree you may have broken hundreds or even thousands of paths with a single parent change. So we have to process all descendants. Our example paths become B<2/3/12/13> and B<2/3/4>. Again, it may seem trivial but it may be expensive depending on the tree's depth and breadth. This simplistic example will require three database readsE<mdash>children of 3, children of 12, children of 8E<mdash>and six updatesE<mdash>each of 4, 5, 7, 8, 12, and 13. This doesn't even count the original expense of finding and updating 3 itself. But the point here is that we should have a write seldom, read often situation and this up front expense may save exponentially with regards to ongoing query costs.
 
 =back
 
 =head1 CAVEATS
 
-If your materialized path column is insufficiently large you're going to have problems. A C<VARCHAR(255)> is only wide enough to support a tree which is 35 nodes deep if the average PK is integers in the millions. This might be fine for your usage. Just be aware path tracking is not arbitrary, it's limited to the column's width.
+If your materialized path column is insufficiently large you're going to have problems. A C<VARCHAR(255)> is only wide enough to support a tree which is 35 nodes deep if the average PK values are integers in the millions. This might be fine for your usage. Just be aware path tracking is not arbitrary, it's limited to the column's width.
 
 =head1 TO DO
 
@@ -183,6 +216,10 @@ If your materialized path column is insufficiently large you're going to have pr
 =item Better documents; obviously.
 
 =item More tests; what else is new?
+
+One set with nothing changed: use default column names.
+
+One set with everything changed.
 
 =back
 

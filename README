@@ -1,13 +1,16 @@
 NAME
-    DBICx::MaterializedPath - (Pre-alpha!) DBIx::Class plugin for
-    automatically tracking lineage paths in simple data trees.
+    DBICx::MaterializedPath - DBIx::Class plugin for automatically tracking
+    lineage paths in simple data trees (Beta software).
 
 VERSION
     0.01_01
 
 SYNOPSIS
 DESCRIPTION
-  METHODS
+  CAVEAT
+    This package requires your table has
+
+METHODS
     ancestors
     get_root
     grandchildren
@@ -18,18 +21,59 @@ DESCRIPTION
 
   OVERRIDDEN METHODS
     insert
+        Sets the materialized path.
+
     update
+        Updates which change the parent of a record necessarily cascade
+        through all their children and grandchildren to recompute and set
+        their new materialized paths. E.g., given this treeE<ndash>
+
+                          1
+                          |
+                          3
+                         / \
+                       12   8
+                      /\    /\
+                     5 13  7  4
+
+        You get paths including 1/3/12/13 and 1/3/4. Let's say we change
+        record 3's parent from 1 to 2E<ndash>
+
+                          2
+                          |
+                          3
+                         / \
+                       12   8
+                      /\    /\
+                     5 13  7  4
+
+        The change is simple and it's obvious you have to update record 3
+        but you just broke the materialized path for recrods 4, 5, 7, 8, 12,
+        and 13. In a big tree you may have broken hundreds or even thousands
+        of paths with a single parent change. So we have to process all
+        descendants. Our example paths become 2/3/12/13 and 2/3/4. Again, it
+        may seem trivial but it may be expensive depending on the tree's
+        depth and breadth. This simplistic example will require three
+        database readsE<mdash>children of 3, children of 12, children of
+        8E<mdash>and six updatesE<mdash>each of 4, 5, 7, 8, 12, and 13. This
+        doesn't even count the original expense of finding and updating 3
+        itself. But the point here is that we should have a write seldom,
+        read often situation and this up front expense may save
+        exponentially with regards to ongoing query costs.
 
 CAVEATS
     If your materialized path column is insufficiently large you're going to
     have problems. A "VARCHAR(255)" is only wide enough to support a tree
-    which is 35 nodes deep if the average PK is integers in the millions.
-    This might be fine for your usage. Just be aware path tracking is not
-    arbitrary, it's limited to the column's width.
+    which is 35 nodes deep if the average PK values are integers in the
+    millions. This might be fine for your usage. Just be aware path tracking
+    is not arbitrary, it's limited to the column's width.
 
 TO DO
     Better documents; obviously.
     More tests; what else is new?
+        One set with nothing changed: use default column names.
+
+        One set with everything changed.
 
 CODE REPOSITORY
     <http://github.com/pangyre/p5-dbicx-materializedpath>.
@@ -55,8 +99,8 @@ AUTHOR
     Ashley Pond V · ashley.pond.v@gmail.com · <http://pangyresoft.com>.
 
 LICENSE
-    The parts of this library which is Yesh specific is free software. You
-    can redistribute and modify it under the same terms as Perl itself.
+    You may redistribute and modify this software under the same terms as
+    Perl itself.
 
 DISCLAIMER OF WARRANTY
     Because this software is licensed free of charge, there is no warranty
