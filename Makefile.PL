@@ -7,8 +7,8 @@ author          "Ashley Pond V <ashley@cpan.org>";
 requires  "parent"      => "0.2";
 requires  "DBIx::Class" => "0.081";
 
-# Too broken to require for now
-build_requires  "Test::More"           => "0.42";
+build_requires "Test::More" => "0.42";
+build_requires "DBICx::TestDatabase";
 
 if ( $Module::Install::AUTHOR )
 {

@@ -1,16 +1,19 @@
 package DBICx::MaterializedPath;
 use warnings;
-no warnings "uninitialized";
 use strict;
 use parent "DBIx::Class";
 
 our $VERSION = "0.01_01";
 
+__PACKAGE__->mk_classdata( parent_column => "parent" );
+__PACKAGE__->mk_classdata( path_column => "materialized_path" );
+__PACKAGE__->mk_classdata( path_separator => "." );
+
 # Max depth setting? See notes on sanity check inline below.
 
 sub ancestors :method {
     my ( $self, @ancestors ) = @_;
-    my $parent_column = $self->_parent_column;
+    my $parent_column = $self->parent_column;
     my $parent = $self->$parent_column;
     return @ancestors unless $parent;
     unshift @ancestors, $parent;
@@ -24,9 +27,10 @@ sub node_depth :method {
 
 sub _nodelist :method {
     my $self = shift;
-    my $path_column = $self->_path_column;
-    my $separator = quotemeta( $self->_path_separator );
-    split $separator, $self->$path_column;
+    my $path_column = $self->path_column || "";
+    my $separator = quotemeta( $self->path_separator );
+    my @pre_calculated_ancestors = split($separator, $self->$path_column || "");
+    return ( @pre_calculated_ancestors, $self->id );
 }
 
 sub root_node :method {
@@ -47,7 +51,7 @@ sub grandchildren {
     }
     else
     {
-        my $parent_column = $self->_parent_column;
+        my $parent_column = $self->parent_column;
         @children = $self->search({ $parent_column => $self->id });
     }
 
@@ -61,26 +65,30 @@ sub grandchildren {
 
 sub set_materialized_path :method {
     my $self = shift;
-    my $parent_column = $self->_parent_column;
-    my $path_column = $self->_path_column;
-    my $materialized_path = join( $self->_path_separator, $self->ancestors );
+    my $parent_column = $self->parent_column;
+    my $path_column = $self->path_column;
+    my @path_parts = $self->ancestors;
+    push @path_parts, $self->id;
+    my $materialized_path = join( $self->path_separator, @path_parts );
     $self->$path_column( $materialized_path );
+    return $materialized_path; # For good measure.
 }
 
 sub insert :method {
     my $self = shift;
-    $self->set_materialized_path;
     $self->next::method(@_);
+    $self->set_materialized_path;
+    $self->update;
 }
 
 sub update :method {
     my $self = shift;
     my %to_update = $self->get_dirty_columns;
-    my $parent_column = $self->_parent_column;
+    my $parent_column = $self->parent_column;
     return $self->next::method(@_) unless $to_update{$parent_column};
 
     # This should be configurable as a transaction I think. 321
-    my $path_column = $self->_path_column;
+    my $path_column = $self->path_column;
     for my $descendent ( $self->grandchildren )
     {
         $descendent->set_materialized_path;
@@ -93,7 +101,7 @@ sub update :method {
 
 sub siblings :method {
     my $self = shift;
-    my $parent_column = $self->_parent_column;
+    my $parent_column = $self->parent_column;
     my $sort = [ $self->_sibling_order || $self->primary_columns ];
     $self->search({ $parent_column => $self->$parent_column },
                   { order_by => $sort });
