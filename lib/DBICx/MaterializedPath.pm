@@ -8,17 +8,31 @@ our $VERSION = "0.01_01";
 __PACKAGE__->mk_classdata( parent_column => "parent" );
 __PACKAGE__->mk_classdata( path_column => "materialized_path" );
 __PACKAGE__->mk_classdata( path_separator => "." );
+__PACKAGE__->mk_classdata( max_depth => 500 );
 
 # Max depth setting? See notes on sanity check inline below.
 
-sub ancestors :method {
+sub _compute_ancestors :method {
     my ( $self, @ancestors ) = @_;
     my $parent_column = $self->parent_column;
     my $parent = $self->$parent_column;
     return @ancestors unless $parent;
     unshift @ancestors, $parent;
-    die "Circular lineage loop in $self suspected!" if @ancestors > $self->_max_depth;
-    $parent->ancestors(@ancestors);
+    die "Circular lineage loop in $self suspected!" if @ancestors > $self->max_depth;
+    $parent->_compute_ancestors(@ancestors);
+}
+
+sub ancestors :method {
+    my $self = shift;
+    my ( $pk_name ) = $self->primary_columns;
+    my $path_column = $self->path_column;
+    my @path = $self->_nodelist;
+    pop @path;
+    return unless @path;
+    $self->result_source
+        ->resultset
+        ->search({ $pk_name => { -in => \@path } },
+                 { order_by => \"LENGTH($path_column)" }); # "
 }
 
 sub node_depth :method {
@@ -29,8 +43,7 @@ sub _nodelist :method {
     my $self = shift;
     my $path_column = $self->path_column || "";
     my $separator = quotemeta( $self->path_separator );
-    my @pre_calculated_ancestors = split($separator, $self->$path_column || "");
-    return ( @pre_calculated_ancestors, $self->id );
+    split($separator, $self->$path_column || "");
 }
 
 sub root_node :method {
@@ -52,7 +65,7 @@ sub grandchildren {
     else
     {
         my $parent_column = $self->parent_column;
-        @children = $self->search({ $parent_column => $self->id });
+        @children = $self->result_source->resultset->search({ $parent_column => $self->id });
     }
 
     for my $kid ( @children )
@@ -67,7 +80,7 @@ sub set_materialized_path :method {
     my $self = shift;
     my $parent_column = $self->parent_column;
     my $path_column = $self->path_column;
-    my @path_parts = $self->ancestors;
+    my @path_parts = map { $_->id } $self->_compute_ancestors;
     push @path_parts, $self->id;
     my $materialized_path = join( $self->path_separator, @path_parts );
     $self->$path_column( $materialized_path );
@@ -103,8 +116,10 @@ sub siblings :method {
     my $self = shift;
     my $parent_column = $self->parent_column;
     my $sort = [ $self->_sibling_order || $self->primary_columns ];
-    $self->search({ $parent_column => $self->$parent_column },
-                  { order_by => $sort });
+    $self->result_source
+        ->resultset
+        ->search({ $parent_column => $self->$parent_column },
+                 { order_by => $sort });
 } 
 
 1;
