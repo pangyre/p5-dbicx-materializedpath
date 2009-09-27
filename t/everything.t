@@ -18,10 +18,6 @@ ok( my $node = $schema->resultset("TreeData")->create({ content => "OH HAI",
     "Creating a record"
     );
 
-# use YAML; diag(YAML::Dump({$node->get_columns}));
-#ok( $node->update );
-# use YAML; diag(YAML::Dump({$node->get_columns}));
-
 is( $node->path, $node->id,
     "The path and the id are the same value for root nodes" );
 
@@ -60,6 +56,32 @@ for my $new ( 1 .. 3 )
 
     $last = $kid;
 }
+
+is( $last->root_node->id, $node->id,
+    "Original node is the root of the last child" );
+
+# Add three children to every record.
+for my $rec ( $schema->resultset("TreeData")->search({},{order_by => "id"}) )
+{
+    next unless $rec->node_depth > 1; # Not the root.
+    for my $new ( 1 .. 3 )
+    {
+        my $kid = $schema->resultset("TreeData")
+            ->create({ content => "Kid #$new of #" . $rec->id,
+                       parent => $rec,
+                       created => $NOW });
+        $last = $kid;
+    }
+}
+
+is( $last->root_node->id, $node->id,
+    "Original node is the root of most recent last child" );
+
+ok( my @descendants = $node->grandchildren,
+    "Getting grandchildren for original node" );
+
+is( scalar( @descendants ), 12,
+    "Correct number of granchildren found" );
 
 diag( "MOOOO " . $last->path );
 

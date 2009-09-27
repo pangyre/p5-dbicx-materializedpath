@@ -3,21 +3,61 @@ NAME
     lineage paths in simple data trees (Beta software).
 
 VERSION
-    0.01_01
+    0.01_03
 
 SYNOPSIS
+    We need a table, or tables, which represents a tree.
+
+     CREATE TABLE tree_data (
+        id INTEGER PRIMARY KEY NOT NULL,
+        parent INT(10),
+        content TEXT NOT NULL,
+        path VARCHAR(255),
+        created DATETIME(19) NOT NULL
+     );
+ 
+     CREATE INDEX tree_data_idx_parent ON tree_data (parent);
+
+    In your DBIx::Class add this to your components–
+
+     use warnings;
+     use strict;
+     use parent qw( DBIx::Class );
+ 
+     __PACKAGE__->load_components(qw(
+                                     +DBICx::MaterializedPath
+                                     Core
+                                     ));
+     # Et cetera.
+
 DESCRIPTION
+    321
+
   CAVEAT
-    This package requires your table has
+    This package requires your table has a single primary key and a method
+    to look up a parent record by its single primary key.
 
 METHODS
     ancestors
+        Searches on the materialized path ids excepting the object's own.
+        This is generally cheap because it uses the path instead of
+        recursion.
+
     get_root
+        Returns the root object for a given record.
+
     grandchildren
+        Iterates through all children and grandchildren.
+
     node_depth
     root_node
-    set_materialized_path
     siblings
+    max_depth
+        Set this to assert a maximum tree depth. Default is 500.
+
+    set_materialized_path
+        Probably shouldn't mess with this. It's used by "insert" and
+        "delete".
 
   OVERRIDDEN METHODS
     insert
@@ -26,7 +66,7 @@ METHODS
     update
         Updates which change the parent of a record necessarily cascade
         through all their children and grandchildren to recompute and set
-        their new materialized paths. E.g., given this treeE<ndash>
+        their new materialized paths. E.g., given this tree–
 
                           1
                           |
@@ -37,7 +77,7 @@ METHODS
                      5 13  7  4
 
         You get paths including 1/3/12/13 and 1/3/4. Let's say we change
-        record 3's parent from 1 to 2E<ndash>
+        record 3's parent from 1 to 2–
 
                           2
                           |
@@ -48,18 +88,18 @@ METHODS
                      5 13  7  4
 
         The change is simple and it's obvious you have to update record 3
-        but you just broke the materialized path for recrods 4, 5, 7, 8, 12,
+        but you just broke the materialized path for records 4, 5, 7, 8, 12,
         and 13. In a big tree you may have broken hundreds or even thousands
         of paths with a single parent change. So we have to process all
         descendants. Our example paths become 2/3/12/13 and 2/3/4. Again, it
         may seem trivial but it may be expensive depending on the tree's
         depth and breadth. This simplistic example will require three
-        database readsE<mdash>children of 3, children of 12, children of
-        8E<mdash>and six updatesE<mdash>each of 4, 5, 7, 8, 12, and 13. This
-        doesn't even count the original expense of finding and updating 3
-        itself. But the point here is that we should have a write seldom,
-        read often situation and this up front expense may save
-        exponentially with regards to ongoing query costs.
+        database reads—children of 3, children of 12, children of 8—and six
+        updates—each of 4, 5, 7, 8, 12, and 13. This doesn't even count the
+        original expense of finding and updating 3 itself. But the point
+        here is that we should have a write seldom, read often situation and
+        this up front expense may save exponentially with regards to ongoing
+        query costs.
 
 CAVEATS
     If your materialized path column is insufficiently large you're going to
@@ -86,14 +126,13 @@ SEE ALSO
 
   WHY NOT DBIx::Class::Ordered?
     There are data sets which have implicit, or even tacit,
-    orderingE<mdash>E<rdquo>positionE<ldquo> in DBIx::Class::Ordered
-    parlanceE<ndash> in the data already. Published articles, for example,
-    will be naturally ordered chronologically. Additional position tracking
-    becomes complex and redundant in this kind of case. You can even run
-    into cases where both types of ordering are necessary like a collection
-    of dictionaries. Each dictionary's terms are ordered alphabetically
-    while each term's definitions would be ordered by a position set at
-    editorial discretion.
+    ordering—”position“ in DBIx::Class::Ordered parlance– in the data
+    already. Published articles, for example, will be naturally ordered
+    chronologically. Additional position tracking becomes complex and
+    redundant in this kind of case. You can even run into cases where both
+    types of ordering are necessary like a collection of dictionaries. Each
+    dictionary's terms are ordered alphabetically while each term's
+    definitions would be ordered by a position set at editorial discretion.
 
 AUTHOR
     Ashley Pond V � ashley.pond.v@gmail.com � <http://pangyresoft.com>.

@@ -2,8 +2,9 @@ package DBICx::MaterializedPath;
 use warnings;
 use strict;
 use parent "DBIx::Class";
+use Carp;
 
-our $VERSION = "0.01_02";
+our $VERSION = "0.01_03";
 our $AUTHORITY = "cpan:ASHLEY";
 
 __PACKAGE__->mk_classdata( parent_column => "parent" );
@@ -19,7 +20,7 @@ sub _compute_ancestors :method {
     my $parent = $self->$parent_column;
     return @ancestors unless $parent;
     unshift @ancestors, $parent;
-    die "Circular lineage loop in $self suspected!" if @ancestors > $self->max_depth;
+    croak "Circular lineage loop in $self suspected!" if @ancestors > $self->max_depth;
     $parent->_compute_ancestors(@ancestors);
 }
 
@@ -50,7 +51,7 @@ sub _nodelist :method {
 sub root_node :method {
     my $self = shift;
     my ( $root_id ) = $self->_nodelist;
-    $self->find($root_id);
+    $self->result_source->resultset->find($root_id);
 }
 
 # Note caveat, instructions about children method.
@@ -135,11 +136,61 @@ DBICx::MaterializedPath - L<DBIx::Class> plugin for automatically tracking linea
 
 =head1 VERSION
 
-0.01_02
+0.01_03
 
 =head1 SYNOPSIS
 
+We need a table, or tables, which represents a tree.
+
+ CREATE TABLE tree_data (
+    id INTEGER PRIMARY KEY NOT NULL,
+    parent INT(10),
+    content TEXT NOT NULL,
+    path VARCHAR(255),
+    created DATETIME(19) NOT NULL
+ );
+ 
+ CREATE INDEX tree_data_idx_parent ON tree_data (parent);
+
+In your L<DBIx::Class> add this to your componentsE<ndash>
+
+ use warnings;
+ use strict;
+ use parent qw( DBIx::Class );
+ 
+ __PACKAGE__->load_components(qw(
+                                 +DBICx::MaterializedPath
+                                 Core
+                                 ));
+ # Et cetera.
+ __PACKAGE__->parent_column("parent"); # default "parent"
+ __PACKAGE__->path_column("path");     # default "materiazlied_path"
+ __PACKAGE__->path_separator(".");     # default "/"
+ __PACKAGE__->max_depth(10);           # default "500"
+
 =head1 DESCRIPTION
+
+Uses a column of a table with a tree structure to keep track of lineage. An example lineage showing primary key idsE<ndash>
+
+ #  1 -> 2 -> 3 -> 10 -> 999 -> 8 -> 42
+
+ my $rec = $result_source->find(999);
+ say $rec->parent->id; # prints "10"
+
+It's trivial to find the parent and easy to recurse on the parent to find all ancestors. With a deep tree it becomes somewhat expensive. Take the example above, for example. If you want to get the entire lineage for the record with id "42" you have to do six queries against the database. If you matain a materialized path you only have to do one.
+
+Consider our record "42" again. With its path 1/2/3/10/999/8/42 we can easily find all its parentsE<ndash>
+
+ my $path = "1/2/3/10/999/8/42";
+ my @ancestor_ids = split '/', $path;
+ pop @ancestor_ids; # Remove the self id.
+ my @ancestors = $result_source
+                      ->search({ parent => { -in => \@ancestor_ids },
+                               { order_by => \"LENGTH(path)" });
+
+We can thank the great and powerful Ovid's co-worker Mark MorganE<mdash>L<http://use.perl.org/~Ovid/journal/39460>E<mdash>for the sorting solution for ensuring the proper order of ancestors is returned.
+
+See also I<Trees in SQL: Nested Sets and Materialized Path>, Vadim Tropashko, L<http://www.dbazine.com/oracle/or-articles/tropashko4>.
 
 =head2 CAVEAT
 
@@ -148,6 +199,10 @@ This package requires your table has a single primary key and a method to look u
 =head1 METHODS
 
 =over 4
+
+=item [path method]
+
+Whatever column you set for your materialized path. In the L</SYNOPSIS> code it is set to C<path> to match the sample table definition. The default if you don't set one is C<materialized_path>. This will, of course, cause errors if there is no such column in the table.
 
 =item ancestors
 
@@ -163,11 +218,19 @@ Iterates through all children and grandchildren.
 
 =item node_depth
 
+Returns 1 for a record with no parent.
+
 =item root_node
+
+=item siblings
+
+=item max_depth
+
+Set this to assert a maximum tree depth. Default is 500.
 
 =item set_materialized_path
 
-=item siblings
+Probably shouldn't mess with this. It's used by L</insert> and L</delete>.
 
 =back
 
@@ -228,8 +291,6 @@ One set with everything changed.
 L<http://github.com/pangyre/p5-dbicx-materializedpath>.
 
 =head1 SEE ALSO
-
-I<Trees in SQL: Nested Sets and Materialized Path>, Vadim Tropashko, L<http://www.dbazine.com/oracle/or-articles/tropashko4>.
 
 L<DBIx::Class::Ordered>, L<DBIx::Class>.
 
