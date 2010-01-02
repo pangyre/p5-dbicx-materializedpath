@@ -17,6 +17,7 @@ if ( $Module::Install::AUTHOR )
 }
 
 auto_install;
+repository 'http://github.com/pangyre/p5-dbicx-materializedpath';
 WriteAll;
 
 __END__
