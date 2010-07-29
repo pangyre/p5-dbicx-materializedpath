@@ -58,23 +58,29 @@ sub root_node :method {
 
 # How can order_by get into this mix?
 sub grandchildren {
-    my ( $self, @grandkids ) = @_;
-    my @children;
-    if ( $self->can("children") )
-    {
-        @children = $self->children;
-    }
-    else
-    {
-        my $parent_column = $self->parent_column;
-        @children = $self->result_source->resultset->search({ $parent_column => $self->id });
-    }
+    my $self = shift;
+    
+    my $path_separator = $self->path_separator;
+    my $path_column    = $self->path_column;
+    my $id             = $self->id;
 
-    for my $kid ( @children )
-    {
-        push @grandkids, $kid;
-        push @grandkids, $kid->grandchildren();
-    }
+    # Example: 1/2/3
+    # to find descendants of 1, use LIKE "1/%"
+    # to find descendants of 2, use LIKE "%/2/%"
+    my $like_if_root  = "${id}${path_separator}\%";
+    my $like_not_root = "\%${path_separator}${id}${path_separator}\%";
+
+    my @grandkids = $self->result_source->resultset->search(
+        {
+            -or => [
+                $path_column => { 'like', $like_if_root  },
+                $path_column => { 'like', $like_not_root },
+            ]
+        },
+        {
+            order_by => \"LENGTH($path_column)"
+        },
+    );
     return @grandkids;
 }
 
