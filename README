@@ -1,9 +1,6 @@
 NAME
     DBICx::MaterializedPath - DBIx::Class plugin for automatically tracking
-    lineage paths in simple data trees (beta software).
-
-VERSION
-    0.01
+    lineage paths in simple data trees.
 
 SYNOPSIS
     We need a table, or tables, which represents a tree.
@@ -35,6 +32,9 @@ SYNOPSIS
      __PACKAGE__->max_depth(10);           # default "500"
 
 DESCRIPTION
+    Note, this is an experimental package and not sanctioned by the DBIC
+    core devs.
+
     Uses a column of a table with a tree structure to keep track of lineage.
     An example lineage showing primary key ids–
 
@@ -87,7 +87,7 @@ METHODS
         Returns the root object for a given record.
 
     grandchildren
-        Iterates through all children and grandchildren.
+        Return all children and grandchildren.
 
     node_depth
         Returns 1 for a record with no parent.

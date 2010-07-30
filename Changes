@@ -1,7 +1,8 @@
 Revision history for DBICx::MaterializedPath
 
-0.02  
+0.02  Thu Jul 29 21:46:47 PDT 2010
       - Fixed first entry in Change file to reflect reality.
+      - Patch from Dan Harbin to get all grandchildren in a single query.
 
 0.01  Sat Sep 26 22:11:49 PDT 2009
       - Initial release.
