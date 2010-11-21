@@ -4,7 +4,7 @@ use strict;
 use parent "DBIx::Class";
 use Carp;
 
-our $VERSION = "0.02";
+our $VERSION = "0.03";
 our $AUTHORITY = "cpan:ASHLEY";
 
 __PACKAGE__->mk_classdata( parent_column => "parent" );
@@ -140,6 +140,10 @@ __END__
 
 DBICx::MaterializedPath - L<DBIx::Class> plugin for automatically tracking lineage paths in simple data trees.
 
+=head1 PREFER
+
+Please see L<DBIx::Class::Tree::Mobius>, L<DBIx::Class::Graph>, and L<DBIx::Class::Tree> instead of this experimental package.
+
 =head1 SYNOPSIS
 
 We need a table, or tables, which represents a tree.
@@ -166,7 +170,7 @@ In your L<DBIx::Class> add this to your componentsE<ndash>
                                  ));
  # Et cetera.
  __PACKAGE__->parent_column("parent"); # default "parent"
- __PACKAGE__->path_column("path");     # default "materiazlied_path"
+ __PACKAGE__->path_column("path");     # default "materialized_path"
  __PACKAGE__->path_separator(".");     # default "/"
  __PACKAGE__->max_depth(10);           # default "500"
 
