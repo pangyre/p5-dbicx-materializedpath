@@ -15,6 +15,7 @@ Catalyst/Authentication/Store
 \.gz
 \bBuild$
 \b_build
+^MYMETA.(?:yml|json)$
 
 ~$
 \.tmp$
