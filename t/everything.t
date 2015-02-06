@@ -21,6 +21,9 @@ ok( my $node = $schema->resultset("TreeData")->create({ content => "OH HAI",
 is( $node->path, $node->id,
     "The path and the id are the same value for root nodes" );
 
+is_deeply( [ $node->ancestors ], [ ],
+    "Root node doesn't have ancestors yet");
+
 my $last = $node;
 my $subtests = 0;
 for my $new ( 1 .. 3 )
@@ -56,6 +59,25 @@ for my $new ( 1 .. 3 )
 
     $last = $kid;
 }
+
+subtest "Croak on parenting recursion" => sub {
+    my $old_last_parent = $last->parent;
+
+    $last->parent($last);
+
+    cmp_ok( $last->id, "==", $last->parent->id,
+        "Node is it's own parent");
+
+    $@ = "";
+    local $SIG{__WARN__} = sub { }; # Hiding deep recursion warning
+    eval { $last->_compute_ancestors };
+    ok($@, "We received the exception");
+
+    $last->parent($old_last_parent);
+
+    cmp_ok( $old_last_parent->id, "==", $last->parent->id,
+        "Node parent restored");
+};
 
 is( $last->root_node->id, $node->id,
     "Original node is the root of the last child" );
