@@ -21,6 +21,9 @@ ok( my $node = $schema->resultset("TreeData")->create({ content => "OH HAI",
 is( $node->path, $node->id,
     "The path and the id are the same value for root nodes" );
 
+is_deeply( [ $node->ancestors ], [ ],
+    "Root node doesn't have ancestors yet");
+
 my $last = $node;
 my $subtests = 0;
 for my $new ( 1 .. 3 )
