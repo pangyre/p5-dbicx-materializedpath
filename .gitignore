@@ -6,6 +6,8 @@ etc/.mysql.cnf
 tmp/
 MANIFEST
 META.yml
+MYMETA.yml
+MYMETA.json
 .svn/
 .cvs/
 pm_to_blib
